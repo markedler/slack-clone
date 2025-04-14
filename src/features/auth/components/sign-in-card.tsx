@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { SignInFlow } from "../types";
 import { useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { TriangleAlert } from "lucide-react";
 
 interface SignInCardProps {
   setState: (state: SignInFlow) => void;
@@ -14,12 +15,30 @@ interface SignInCardProps {
 
 export const SignInCard = ({ setState }: SignInCardProps) => {
   const { signIn } = useAuthActions();
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleProviderSignIn = (value: "github" | "google") => {
+  const onPasswordSignIn = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPending(true);
+    signIn("password", { email, password, flow: "signIn" })
+      .catch(() => {
+        setError("Invalid email or password.");
+      })
+      .finally(() => {
+        setPending(false);
+      })
+  };
+
+  const onProviderSignIn = (value: "github" | "google") => {
+    setPending(true);
+
     signIn(value).catch((error) => {
       console.error("Error signing in with provider:", error);
+    }).finally(() => {
+      setPending(false);
     });
   };
   return (
@@ -32,21 +51,27 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
           Use your email or another service to continue
         </CardDescription>
       </CardHeader>
+      {!!error && (
+        <div className="bg-destructive/15 p-3 rounded-md flex items-center gap-x-2 text-sm text-destructive mb-6">
+          <TriangleAlert className="size-4" />
+          <p>{error}</p>
+        </div>
+      )}
       <CardContent className="space-y-5 px-0 pb-0">
-        <form className="space-y-2.5">
-          <Input disabled={false} placeholder="Email" value={email} onChange={(e) => { setEmail(e.target.value) }} type="email" required />
-          <Input disabled={false} placeholder="Password" value={password} onChange={(e) => { setPassword(e.target.value) }} type="password" required />
-          <Button type="submit" className="w-full" size="lg" disabled={false}>
+        <form onSubmit={onPasswordSignIn} className="space-y-2.5">
+          <Input disabled={pending} placeholder="Email" value={email} onChange={(e) => { setEmail(e.target.value) }} type="email" required />
+          <Input disabled={pending} placeholder="Password" value={password} onChange={(e) => { setPassword(e.target.value) }} type="password" required />
+          <Button type="submit" className="w-full" size="lg" disabled={pending}>
             Continue
           </Button>
         </form>
         <Separator />
         <div className="flex flex-col gap-y-2.5">
-          <Button disabled={false} onClick={() => { }} variant="outline" className="w-full relative" size="lg">
+          <Button disabled={pending} onClick={() => onProviderSignIn("google")} variant="outline" className="w-full relative" size="lg">
             <FcGoogle className="size-5 absolute top-2.5 left-2.5" />
             Continue with Google
           </Button>
-          <Button disabled={false} onClick={() => handleProviderSignIn("github")} variant="outline" className="w-full relative" size="lg">
+          <Button disabled={pending} onClick={() => onProviderSignIn("github")} variant="outline" className="w-full relative" size="lg">
             <FaGithub className="size-5 absolute top-2.5 left-2.5" />
             Continue with Github
           </Button>
